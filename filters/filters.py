@@ -21,15 +21,18 @@ def get_filter_list(path: str = None):
 
 @get_filter_list("filters/youtube.txt")
 def check_youtube_URL_message(url_text: str):
+    url_text = url_text.lower()
     if any(i in url_text for i in check_youtube_URL_message.filter):
         return True
 
 @get_filter_list("filters/tiktok.txt")
 def check_tiktok_URL_message(url_text: str):
+    url_text = url_text.lower()
     if any(i in url_text for i in check_tiktok_URL_message.filter):
         return True
     
 @get_filter_list("filters/pornhub.txt")
 def check_pornhub_URL_message(url_text: str):
+    url_text = url_text.lower()
     if any(i in url_text for i in check_pornhub_URL_message.filter):
-            return True
+        return True

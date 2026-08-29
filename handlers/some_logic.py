@@ -49,16 +49,18 @@ async def check_URL_message(message: types.Message):
     if not message.entities:
         return
     for entity in message.entities:
-        if entity.type in [MessageEntityType.URL, MessageEntityType.TEXT_LINK]:
+        if entity.type == MessageEntityType.URL:
             url_text = message.text[entity.offset : entity.offset + entity.length]
-            if 'youtube' in monitor_group_messages.filter and filters.check_youtube_URL_message(url_text):
-                await load_video.download_youtube_video(url_text, message = message)
-            if 'tiktok' in monitor_group_messages.filter and filters.check_tiktok_URL_message(url_text):
-                #await tt_load.send_video(message, url_text)
-                print(f"Tictok пока не поддерживается. Выключи этот функционал в filters/handlers.txt")
-            if 'pornhub' in monitor_group_messages.filter and filters.check_pornhub_URL_message(url_text):
-                #await load_video.download_pornhub_video(url_text, message = message)
-                print(f"PornHub пока не поддерживается. Выключи этот функционал в filters/handlers.txt")
+        elif entity.type == MessageEntityType.TEXT_LINK:
+            url_text = entity.url
+        else:
+            continue
+        if 'youtube' in monitor_group_messages.filter and filters.check_youtube_URL_message(url_text):
+            await load_video.download_youtube_video(url_text, message = message)
+        if 'tiktok' in monitor_group_messages.filter and filters.check_tiktok_URL_message(url_text):
+            await load_video.download_tiktok_video(url_text, message = message)
+        if 'pornhub' in monitor_group_messages.filter and filters.check_pornhub_URL_message(url_text):
+            await load_video.download_pornhub_video(url_text, message = message)
 
 # Хендлер ловит все сообщения в группе (если выключен Privacy Mode в BotFather)
 @router.message()

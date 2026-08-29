@@ -1,2 +1,6 @@
+# Ссылки YouTube: домены и короткая форма.
+# "youtube" покрывает youtube.com и поддомены:
+#   www., m., music., gaming., youtube-nocookie.com, youtubekids.com.
+# "youtu.be" — короткие ссылки-редиректы (не содержат "youtube").
 youtube
 youtu.be

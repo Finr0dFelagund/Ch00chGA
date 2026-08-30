@@ -3,7 +3,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from config import config
 from handlers import some_logic
-from AI_module import database, core
+from AI_module import database
 from handlers.load_video import init_tiktok_browser, close_tiktok_browser
 
 async def main():

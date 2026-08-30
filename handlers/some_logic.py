@@ -4,8 +4,7 @@ from aiogram.enums import MessageEntityType
 from handlers import load_video
 from filters import filters
 from filters.filters import get_filter_list
-from AI_module import core, database
-import time
+from AI_module import memory, pipeline, prompts
 
 # Изолированный роутер для групповых обработчиков
 router = Router()
@@ -26,7 +25,7 @@ async def chat_help_command(message: types.Message):
     if message.chat.type in ["group", "supergroup"]:
         new_prompt = message.text.replace("/set_personality", "").strip()
         if new_prompt:
-            await core.set_personality(chat_id=message.chat.id, personality=new_prompt)
+            await memory.set_personality(chat_id=message.chat.id, personality=new_prompt)
             await message.reply("Частичная лоботомия проведена")
         else:
             await message.reply("А кто указывать промпт будет?")
@@ -34,7 +33,7 @@ async def chat_help_command(message: types.Message):
 @router.message(Command("get_personality"))
 async def chat_help_command(message: types.Message):
     if message.chat.type in ["group", "supergroup"]:
-        personality = await core.set_personality(chat_id=message.chat.id)
+        personality = await memory.get_personality(chat_id=message.chat.id) or prompts.load("personality_default")
         await message.reply(personality)
 
 #------------------------------
@@ -67,28 +66,12 @@ async def check_URL_message(message: types.Message):
 @get_filter_list("filters/handlers.txt")
 async def monitor_group_messages(message: types.Message,  bot: Bot):
     if message.chat.type in ["group", "supergroup"]:
-
-        if 'AI_chating_memory' in monitor_group_messages.filter:
-            chat_id = message.chat.id
-            user_name = message.from_user.full_name
-            bot_user = await bot.get_me()
-            async with database.aiosqlite.connect(database.DB_NAME) as db:
-                await db.execute("INSERT INTO chat_history (chat_id, role, user_name, text) VALUES (?, 'user', ?, ?)",(chat_id, user_name, message.text))
-                await db.execute("INSERT INTO chat_meta (chat_id, last_message_time) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET last_message_time = ?",(chat_id, time.time(), time.time()))
-                await db.commit()
-            await core.compress_history_to_summary(chat_id)
-
-        if 'AI_chating_responce' in monitor_group_messages.filter:
-            SKIP_prompt = 'ВАЖНО: реши, имеешь ли ты что сказать по теме, чтобы это было актуально и интересно. Если да - скажи, если нет - отправь ТОЛЬКО одно слово "SKIP"'
-            ai_response = await core.get_deepseek_response(chat_id, bot_user.first_name, SKIP_prompt)
-            if not 'SKIP' in ai_response.strip():
-                await message.reply(ai_response)
-                if 'AI_chating_memory' in monitor_group_messages.filter:
-                    async with database.aiosqlite.connect(database.DB_NAME) as db:
-                        await db.execute("INSERT INTO chat_history (chat_id, role, user_name, text) VALUES (?, 'assistant', ?, ?)",(chat_id, bot_user.first_name, ai_response))
-                        await db.execute("INSERT INTO chat_meta (chat_id, last_message_time) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET last_message_time = ?",(chat_id, time.time(), time.time()))
-                        await db.commit()
-            else:
-                print('skip')
+        if 'AI_chating_memory' in monitor_group_messages.filter or 'AI_chating_responce' in monitor_group_messages.filter:
+            await pipeline.run_pipeline(
+                message,
+                bot,
+                memory_on='AI_chating_memory' in monitor_group_messages.filter,
+                response_on='AI_chating_responce' in monitor_group_messages.filter,
+            )
         await check_bug_message(message)
         await check_URL_message(message)

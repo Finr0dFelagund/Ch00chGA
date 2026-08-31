@@ -1,5 +1,3 @@
-import json
-import re
 from config import config
 from openai import AsyncOpenAI
 
@@ -27,27 +25,3 @@ async def chat(messages, *, temperature: float = 0.7, max_tokens: int = 400) -> 
             if content:
                 return content
     return ""
-
-def parse_decision(text: str):
-    if not text:
-        return False, "empty"
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", text, re.S)
-        if not match:
-            return False, "parse_failed"
-        try:
-            data = json.loads(match.group(0))
-        except json.JSONDecodeError:
-            return False, "parse_failed"
-
-    raw = data.get("should_respond")
-    if isinstance(raw, str):
-        should = raw.strip().lower() in ("true", "1", "yes")
-    elif isinstance(raw, bool):
-        should = raw
-    else:
-        should = bool(raw)
-    reason = str(data.get("reason", ""))
-    return should, reason

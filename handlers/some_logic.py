@@ -1,7 +1,7 @@
 from aiogram import Router, types, Bot
 from aiogram.filters import Command
 from aiogram.enums import MessageEntityType
-from handlers import load_video
+from load_video import youtube, tiktok, pornhub
 from filters import filters
 from filters.filters import get_filter_list
 from AI_module import memory, pipeline, prompts
@@ -16,8 +16,10 @@ async def chat_help_command(message: types.Message):
         await message.reply(
             "Привет! Я твой кастомный помощник.\n"
             "/set_personality [str] - настроить промпт личности для чата.\n"
-            "/get_personality - узнать промпт личности для чата.\n"
-            "Если в сообщении есть ссылка на youtube видео, я его скачаю и пришлю в лучшем разрешении.\n"
+            "/get_personality - показать текущую личность.\n"
+            "/clear - стереть всю память чата.\n"
+            "/clear N - стереть последние N сообщений.\n"
+            "Если в сообщении есть ссылка на видео (YouTube, TikTok, PornHub), скачаю и пришлю.\n"
         )
 
 @router.message(Command("set_personality"))
@@ -35,6 +37,26 @@ async def chat_help_command(message: types.Message):
     if message.chat.type in ["group", "supergroup"]:
         personality = await memory.get_personality(chat_id=message.chat.id) or prompts.load("personality_default")
         await message.reply(personality)
+
+@router.message(Command("clear"))
+async def clear_memory_command(message: types.Message):
+    if message.chat.type in ["group", "supergroup"]:
+        async with memory.chat_lock(message.chat.id):
+            arg = message.text.replace("/clear", "").strip()
+            if arg:
+                try:
+                    count = int(arg)
+                except ValueError:
+                    await message.reply("А сколько сообщений стереть? Числом.")
+                    return
+                if count <= 0:
+                    await message.reply("Тебе типо новых надо добавить? Так пиши....")
+                    return
+                await memory.delete_last_messages(message.chat.id, count)
+                await message.reply(f"Последние {count} сообщений отлоботомированы.")
+            else:
+                await memory.clear_history(message.chat.id)
+                await message.reply("Ультралоботомия окончена.")
 
 #------------------------------
 #Функции обработки и общий хэндлер на всё
@@ -55,11 +77,11 @@ async def check_URL_message(message: types.Message):
         else:
             continue
         if 'youtube' in monitor_group_messages.filter and filters.check_youtube_URL_message(url_text):
-            await load_video.download_youtube_video(url_text, message = message)
+            await youtube.download_youtube_video(url_text, message = message)
         if 'tiktok' in monitor_group_messages.filter and filters.check_tiktok_URL_message(url_text):
-            await load_video.download_tiktok_video(url_text, message = message)
+            await tiktok.download_tiktok_video(url_text, message = message)
         if 'pornhub' in monitor_group_messages.filter and filters.check_pornhub_URL_message(url_text):
-            await load_video.download_pornhub_video(url_text, message = message)
+            await pornhub.download_pornhub_video(url_text, message = message)
 
 # Хендлер ловит все сообщения в группе (если выключен Privacy Mode в BotFather)
 @router.message()

@@ -43,9 +43,7 @@ async def count_messages(chat_id: int) -> int:
             row = await cursor.fetchone()
     return row[0] if row else 0
 
-
 async def get_recent_messages(chat_id: int, limit: int = 100):
-    """Последние сообщения чата, от старых к новым."""
     async with aiosqlite.connect(database.DB_NAME) as db:
         async with db.execute(
             "SELECT role, user_name, text FROM chat_history "
@@ -57,7 +55,6 @@ async def get_recent_messages(chat_id: int, limit: int = 100):
 
 
 async def get_oldest_messages(chat_id: int, limit: int = 50):
-    """Самые старые сообщения (для сжатия в саммари)."""
     async with aiosqlite.connect(database.DB_NAME) as db:
         async with db.execute(
             "SELECT id, user_name, text FROM chat_history "
@@ -121,3 +118,22 @@ async def set_personality(chat_id: int, personality: str) -> str:
         )
         await db.commit()
     return personality.strip()
+
+
+async def clear_history(chat_id: int):
+    async with aiosqlite.connect(database.DB_NAME) as db:
+        await db.execute("DELETE FROM chat_history WHERE chat_id = ?", (chat_id,))
+        await db.execute("UPDATE chat_meta SET summary = '' WHERE chat_id = ?", (chat_id,))
+        await db.commit()
+
+
+async def delete_last_messages(chat_id: int, limit: int):
+    if limit <= 0:
+        return
+    async with aiosqlite.connect(database.DB_NAME) as db:
+        await db.execute(
+            "DELETE FROM chat_history WHERE id IN ("
+            "SELECT id FROM chat_history WHERE chat_id = ? ORDER BY id DESC LIMIT ?)",
+            (chat_id, limit),
+        )
+        await db.commit()

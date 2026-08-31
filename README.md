@@ -27,17 +27,21 @@ Python 3.14, aiogram 3.x (Long Polling), DeepSeek API (`openai`, модель `d
 ├── ffmpeg.exe             # слияние/перекодирование видео
 ├── AI_module/
 │   ├── pipeline.py        # оркестрация болталки: гейт → решение → ответ → сжатие
-│   ├── decision.py        # фильтр «отвечать/нет» (temp=0, JSON)
+│   ├── decision.py        # фильтр «отвечать/нет» (temp=0, слово «да/нет»)
 │   ├── responder.py       # генератор ответа (temp=0.7)
 │   ├── summarizer.py      # сжатие истории в саммари (безопасная транзакция)
 │   ├── memory.py          # доступ к истории/саммари/личности + per-chat lock
-│   ├── llm.py             # DeepSeek-клиент + разбор JSON решения
+│   ├── llm.py             # DeepSeek-клиент
 │   ├── prompts.py         # загрузчик промптов из prompts/*.txt
 │   ├── database.py        # схема SQLite (chat_history, chat_meta)
 │   └── prompts/           # промпты и критерии фильтра (txt)
 ├── handlers/
-│   ├── some_logic.py      # роутер: команды, монитор сообщений, URL-обработка
-│   └── load_video.py      # скачивание YouTube / TikTok / PornHub
+│   └── some_logic.py      # роутер: команды, монитор сообщений, URL-обработка
+├── load_video/
+│   ├── sender.py          # декоратор @send_video: скачивание + отправка + удаление файла
+│   ├── youtube.py         # скачивание YouTube (yt-dlp)
+│   ├── pornhub.py         # скачивание PornHub (перебор форматов, лимит 48 МБ)
+│   └── tiktok.py          # персистентный Playwright-браузер + скачивание TikTok
 └── filters/
     ├── filters.py         # декоратор @get_filter_list и проверки URL
     ├── handlers.txt       # тогглы функций
@@ -81,6 +85,8 @@ python main.py
 | `/help` | Справка |
 | `/set_personality <текст>` | Задать личность чата |
 | `/get_personality` | Показать текущую личность |
+| `/clear` | Стереть всю память чата |
+| `/clear N` | Стереть последние N сообщений |
 
 ## Скачивание видео
 

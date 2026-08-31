@@ -35,10 +35,10 @@ async def run_pipeline(message, bot, *, memory_on: bool, response_on: bool):
             if _bot_mentioned(message, bot_username):
                 should, reason = True, "mention"
             else:
-                should, reason = await decision.should_respond(chat_id)
+                should, reason = await decision.should_respond(chat_id, bot_name, bot_username)
 
             if should:
-                text = await responder.respond(chat_id, bot_name)
+                text = await responder.respond(chat_id, bot_name, bot_username)
                 if text and text.strip():
                     text = text.strip()
                     await message.reply(text)

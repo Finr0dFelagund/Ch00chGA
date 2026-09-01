@@ -4,3 +4,4 @@ pornhub
 bug
 AI_chating_responce
 AI_chating_memory
+transliterate_auto

@@ -11,6 +11,7 @@ Telegram-бот для групповых чатов (`group`/`supergroup`): в�
   - TikTok — Playwright (персистентный headless-Chromium);
   - PornHub — yt-dlp с impersonation (curl_cffi).
 - Реакция на слово «баг» в чате.
+- Исправление раскладки: команда `/transliterate` (ru/en, азбука Морзе) и автоисправление текста в неправильной раскладке через LLM-гейт.
 - Функции включаются/выключаются правкой `filters/handlers.txt`.
 
 ## Стек
@@ -42,6 +43,12 @@ Python 3.14, aiogram 3.x (Long Polling), DeepSeek API (`openai`, модель `d
 │   ├── youtube.py         # скачивание YouTube (yt-dlp)
 │   ├── pornhub.py         # скачивание PornHub (перебор форматов, лимит 48 МБ)
 │   └── tiktok.py          # персистентный Playwright-браузер + скачивание TikTok
+├── translating_msgs/
+│   ├── keyboard_layout.py # исправление раскладки (ru/en)
+│   ├── morse_coding.py    # азбука Морзе (кодирование/декодирование)
+│   ├── auto_correction.py # автоисправление раскладки через LLM-гейт
+│   ├── prompts.py         # загрузчик промптов из prompts/*.txt
+│   └── prompts/           # промпт детектора раскладки (txt)
 └── filters/
     ├── filters.py         # декоратор @get_filter_list и проверки URL
     ├── handlers.txt       # тогглы функций
@@ -87,6 +94,7 @@ python main.py
 | `/get_personality` | Показать текущую личность |
 | `/clear` | Стереть всю память чата |
 | `/clear N` | Стереть последние N сообщений |
+| `/transliterate [from] [to] [text]` | Исправить раскладку (ru/en) или азбука Морзе: `/transliterate en ru Ghbdtn` |
 
 ## Скачивание видео
 
@@ -107,6 +115,7 @@ pornhub
 bug
 AI_chating_responce
 AI_chating_memory
+transliterate_auto
 ```
 
 ## Ограничения

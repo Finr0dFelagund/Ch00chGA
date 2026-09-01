@@ -3,7 +3,7 @@ import re
 
 DECISION_LIMIT = 10
 DECISION_MAX_TOKENS = 20
-
+MAX_DECISION_TRIES = 3
 
 async def should_respond(chat_id: int, bot_name: str, bot_username: str):
     rows = await memory.get_recent_messages(chat_id, limit=DECISION_LIMIT)
@@ -16,14 +16,21 @@ async def should_respond(chat_id: int, bot_name: str, bot_username: str):
         content = f"{name}: {text}" if role == "user" else text
         messages.append({"role": role, "content": content})
 
-    try:
-        raw = await llm.chat(messages, temperature=0, max_tokens=DECISION_MAX_TOKENS)
-    except Exception as e:
-        print(f"Ошибка фильтра решения: {e}")
-        return False, "error"
+    tries = MAX_DECISION_TRIES
+    should, reason = False, "parse_failed"
+    while tries > 0:
+        try:
+            raw = await llm.chat(messages, temperature=0, max_tokens=DECISION_MAX_TOKENS)
+        except Exception as e:
+            print(f"Ошибка фильтра решения: {e}")
+            return False, "error"
 
-    should, reason = parse_decision(raw)
-    print(f"[decision] chat={chat_id} should_respond={should} reason={reason}")
+        should, reason = parse_decision(raw)
+        print(f"[decision] chat={chat_id} |{MAX_DECISION_TRIES - tries + 1}| should_respond={should} reason={reason}")
+
+        tries -= 1
+        if reason != "parse_failed":
+            break
     return should, reason
 
 def parse_decision(text: str):

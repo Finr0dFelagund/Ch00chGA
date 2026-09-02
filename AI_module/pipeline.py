@@ -1,5 +1,6 @@
 from aiogram.enums import MessageEntityType
 from AI_module import memory, decision, responder, summarizer
+import stats
 
 
 def _bot_mentioned(message, bot_username: str) -> bool:
@@ -36,6 +37,7 @@ async def run_pipeline(message, bot, *, memory_on: bool, response_on: bool):
                 should, reason = True, "mention"
             else:
                 should, reason = await decision.should_respond(chat_id, bot_name, bot_username)
+            await stats.record_decision(chat_id, should, reason)
 
             if should:
                 text = await responder.respond(chat_id, bot_name, bot_username)

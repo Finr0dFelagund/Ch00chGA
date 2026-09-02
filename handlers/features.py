@@ -16,6 +16,7 @@ FEATURES = {
     "AI_chating_responce": "генерация ответов в беседе",
     "AI_chating_memory": "запоминание истории беседы",
     "transliterate_auto": "автоисправление раскладки",
+    "stats": "статистика бота",
 }
 
 _LOWER_TO_NAME = {name.lower(): name for name in FEATURES}

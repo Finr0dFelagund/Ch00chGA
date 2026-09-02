@@ -24,6 +24,8 @@ async def maybe_compress(chat_id: int):
             [{"role": "user", "content": prompt}],
             temperature=0.3,
             max_tokens=500,
+            chat_id=chat_id,
+            tag="summarizer",
         )
     except Exception as e:
         print(f"Ошибка сжатия истории: {e}")

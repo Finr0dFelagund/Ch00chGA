@@ -20,7 +20,7 @@ async def should_respond(chat_id: int, bot_name: str, bot_username: str):
     should, reason = False, "parse_failed"
     while tries > 0:
         try:
-            raw = await llm.chat(messages, temperature=0, max_tokens=DECISION_MAX_TOKENS)
+            raw = await llm.chat(messages, temperature=0, max_tokens=DECISION_MAX_TOKENS, chat_id=chat_id, tag="decision")
         except Exception as e:
             print(f"Ошибка фильтра решения: {e}")
             return False, "error"

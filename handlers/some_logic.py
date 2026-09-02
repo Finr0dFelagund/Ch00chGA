@@ -6,14 +6,25 @@ from filters import filters
 from AI_module import memory, pipeline, prompts
 import translating_msgs
 from handlers import features
+import stats
 
 # Изолированный роутер для групповых обработчиков
 router = Router()
+
+
+def _user_id(message) -> int | None:
+    return message.from_user.id if message.from_user else None
+
+
+def stats_visible(message) -> bool:
+    """Ворота доступа к статистике: сейчас открыты всем, позже можно ограничить."""
+    return True
 
 # Хэндлеры на команды
 @router.message(Command("help"))
 async def chat_help_command(message: types.Message):
     if message.chat.type in ["group", "supergroup"]:
+        await stats.record_command(message.chat.id, _user_id(message), "help")
         await message.reply(
             "Привет! Я твой кастомный помощник.\n"
             "/set_personality [str] - настроить промпт личности для чата.\n"
@@ -23,6 +34,7 @@ async def chat_help_command(message: types.Message):
             "/transliterate [from] [to] [text] - исправить раскладку (ru/en) или перевести в азбуку Морзе (morse).\n"
             "/features - какие функции активны в этом чате.\n"
             "/feature [имя] on|off - включить или выключить функцию в этом чате.\n"
+            "/stats [раздел] [период] - статистика (summary|top|video|tokens|global, период: today|week|month).\n"
             "Если текст набран в неправильной раскладке — предложу исправление.\n"
             "Если в сообщении есть ссылка на видео (YouTube, TikTok, PornHub) - скачаю и пришлю.\n"
         )
@@ -30,6 +42,7 @@ async def chat_help_command(message: types.Message):
 @router.message(Command("set_personality"))
 async def chat_help_command(message: types.Message):
     if message.chat.type in ["group", "supergroup"]:
+        await stats.record_command(message.chat.id, _user_id(message), "set_personality")
         new_prompt = message.text.replace("/set_personality", "").strip()
         if new_prompt:
             await memory.set_personality(chat_id=message.chat.id, personality=new_prompt)
@@ -40,12 +53,14 @@ async def chat_help_command(message: types.Message):
 @router.message(Command("get_personality"))
 async def chat_help_command(message: types.Message):
     if message.chat.type in ["group", "supergroup"]:
+        await stats.record_command(message.chat.id, _user_id(message), "get_personality")
         personality = await memory.get_personality(chat_id=message.chat.id) or prompts.load("personality_default")
         await message.reply(personality)
 
 @router.message(Command("clear"))
 async def clear_memory_command(message: types.Message):
     if message.chat.type in ["group", "supergroup"]:
+        await stats.record_command(message.chat.id, _user_id(message), "clear")
         async with memory.chat_lock(message.chat.id):
             arg = message.text.replace("/clear", "").strip()
             if arg:
@@ -66,6 +81,7 @@ async def clear_memory_command(message: types.Message):
 @router.message(Command("transliterate"))
 async def transliterate_command(message: types.Message):
     if message.chat.type in ["group", "supergroup"]:
+        await stats.record_command(message.chat.id, _user_id(message), "transliterate")
         in_str = message.text.replace('/transliterate', '').strip()
         if not in_str:
             return await message.reply('А что конкретно сделать??')
@@ -98,6 +114,7 @@ async def transliterate_command(message: types.Message):
 @router.message(Command("features"))
 async def features_status_command(message: types.Message):
     if message.chat.type in ["group", "supergroup"]:
+        await stats.record_command(message.chat.id, _user_id(message), "features")
         lines = ["Функции в этом чате:"]
         for name, description, state in features.status(message.chat.id):
             if state == "on":
@@ -112,6 +129,7 @@ async def features_status_command(message: types.Message):
 @router.message(Command("feature"))
 async def feature_command(message: types.Message):
     if message.chat.type in ["group", "supergroup"]:
+        await stats.record_command(message.chat.id, _user_id(message), "feature")
         args = message.text.replace("/feature", "").strip().split()
         if len(args) != 2 or args[1].lower() not in ("on", "off"):
             return await message.reply("Формат: /feature <имя> on|off (список функций — /features)")
@@ -121,6 +139,31 @@ async def feature_command(message: types.Message):
             return await message.reply(name)
         state = "включена" if enabled else "выключена"
         return await message.reply(f"Готово: {name} теперь {state} в этом чате.")
+
+
+@router.message(Command("stats"))
+async def stats_command(message: types.Message):
+    if message.chat.type in ["group", "supergroup"]:
+        await stats.record_command(message.chat.id, _user_id(message), "stats")
+        if not stats_visible(message) or not features.is_enabled(message.chat.id, "stats"):
+            await message.reply("Статистика сейчас недоступна в этом чате.")
+            return
+        args = message.text.replace("/stats", "").strip().split()
+        section = args[0].lower() if args else "summary"
+        period = args[1].lower() if len(args) > 1 else "all"
+        if not stats.is_valid_section(section) or not stats.is_valid_period(period):
+            await message.reply("Формат: /stats [summary|top|video|tokens|global] [all|today|yesterday|week|month]")
+            return
+        chat_id = None if section == "global" else message.chat.id
+        if section == "summary":
+            text = await stats.build_summary(chat_id, period)
+        elif section == "top":
+            text = await stats.build_top(chat_id, period)
+        elif section == "video":
+            text = await stats.build_video(chat_id, period)
+        else:
+            text = await stats.build_tokens(chat_id, period)
+        await message.reply(text)
 
 
 #------------------------------
@@ -151,7 +194,7 @@ async def check_URL_message(message: types.Message):
 #Реакция на текст в неправильной раскладке
 async def check_wrong_layout(message: types.Message):
     if features.is_enabled(message.chat.id, 'transliterate_auto'):
-        corrected = await translating_msgs.auto_correct(message.text)
+        corrected = await translating_msgs.auto_correct(message.text, chat_id=message.chat.id)
         if corrected:
             await message.reply(f"Возможно, ты хотел написать: {corrected}")
 
@@ -159,6 +202,14 @@ async def check_wrong_layout(message: types.Message):
 @router.message()
 async def monitor_group_messages(message: types.Message,  bot: Bot):
     if message.chat.type in ["group", "supergroup"]:
+        from_user = message.from_user
+        is_command = bool(message.text and message.text.lstrip().startswith("/"))
+        await stats.record_message(
+            message.chat.id,
+            user_id=_user_id(message),
+            user_name=from_user.full_name if from_user else None,
+            is_command=is_command,
+        )
         memory_on = features.is_enabled(message.chat.id, 'AI_chating_memory')
         response_on = features.is_enabled(message.chat.id, 'AI_chating_responce')
         if memory_on or response_on:

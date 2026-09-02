@@ -5,12 +5,14 @@ from config import config
 from handlers import some_logic, features
 from AI_module import database
 from load_video import init_tiktok_browser, close_tiktok_browser
+import stats
 
 async def main():
 
     logging.basicConfig(level=logging.INFO)
 
     await database.init_talker_db()
+    await stats.init_db()
     await features.load_state()
     await init_tiktok_browser()
     

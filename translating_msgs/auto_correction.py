@@ -40,13 +40,15 @@ def _parse_correction(text: str, source: str = "") -> str:
     return "to_ru"
 
 
-async def _need_correction(text: str) -> str:
+async def _need_correction(text: str, chat_id=None) -> str:
     system = prompts.render("layout_detector", text=text)
     try:
         raw = await llm.chat(
             [{"role": "system", "content": system}],
             temperature=0,
             max_tokens=CORRECTION_MAX_TOKENS,
+            chat_id=chat_id,
+            tag="layout",
         )
     except Exception as e:
         print(f"Ошибка детектора раскладки: {e}")
@@ -54,11 +56,11 @@ async def _need_correction(text: str) -> str:
     return _parse_correction(raw, text)
 
 
-async def auto_correct(text: str) -> str | None:
+async def auto_correct(text: str, chat_id=None) -> str | None:
     """Возвращает исправленный текст, если раскладка набрана неверно, иначе None."""
     if not _is_candidate(text):
         return None
-    route = await _need_correction(text)
+    route = await _need_correction(text, chat_id)
     if route == "нет":
         return None
     corrected = change_kb_layout(text, route)

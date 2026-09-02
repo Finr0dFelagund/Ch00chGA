@@ -18,7 +18,7 @@ async def respond(chat_id: int, bot_name: str, bot_username: str) -> str:
     messages.append({"role": "system", "content": prompts.load("responder")})
 
     try:
-        return await llm.chat(messages, temperature=0.7, max_tokens=400)
+        return await llm.chat(messages, temperature=0.7, max_tokens=400, chat_id=chat_id, tag="responder")
     except Exception as e:
         print(f"Ошибка генерации ответа: {e}")
         return "Ой, что-то мои нейроны заклинило... Повтори еще раз?"

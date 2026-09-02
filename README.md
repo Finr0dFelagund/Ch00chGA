@@ -13,6 +13,7 @@ Telegram-бот для групповых чатов (`group`/`supergroup`): в�
 - Реакция на слово «баг» в чате.
 - Исправление раскладки: команда `/transliterate` (ru/en, азбука Морзе) и автоисправление текста в неправильной раскладке через LLM-гейт.
 - Функции включаются/выключаются правкой `filters/handlers.txt`; индивидуально для чата — командами `/features` (статус) и `/feature <имя> on|off`. Закомментированная в файле функция запрещена глобально и не включается ни в одном чате.
+- Статистика: `/stats` — обработанные сообщения, активные пользователи, команды, скачивания видео, токены и стоимость DeepSeek по функциям, с разбивкой по периодам.
 
 ## Стек
 
@@ -44,6 +45,13 @@ Python 3.14, aiogram 3.x (Long Polling), DeepSeek API (`openai`, модель `d
 │   ├── youtube.py         # скачивание YouTube (yt-dlp)
 │   ├── pornhub.py         # скачивание PornHub (перебор форматов, лимит 48 МБ)
 │   └── tiktok.py          # персистентный Playwright-браузер + скачивание TikTok
+├── stats/
+│   ├── __init__.py        # публичный API статистики
+│   ├── db.py              # таблицы событий статистики
+│   ├── collect.py         # запись событий (сообщения, команды, видео, токены)
+│   ├── prices.py          # тариф DeepSeek из prices.txt (перечитывание по TTL)
+│   ├── report.py          # текстовые отчёты по чатам и периодам
+│   └── prices.txt         # цены USD за 1M токенов
 ├── translating_msgs/
 │   ├── keyboard_layout.py # исправление раскладки (ru/en)
 │   ├── morse_coding.py    # азбука Морзе (кодирование/декодирование)
@@ -98,6 +106,7 @@ python main.py
 | `/transliterate [from] [to] [text]` | Исправить раскладку (ru/en) или азбука Морзе: `/transliterate en ru Ghbdtn` |
 | `/features` | Показать, какие функции активны в этом чате |
 | `/feature <имя> on\|off` | Включить/выключить функцию в этом чате |
+| `/stats [раздел] [период]` | Статистика: `summary`/`top`/`video`/`tokens`/`global`; период `all`/`today`/`yesterday`/`week`/`month` |
 
 ## Скачивание видео
 
@@ -119,6 +128,7 @@ bug
 AI_chating_responce
 AI_chating_memory
 transliterate_auto
+stats
 ```
 
 ## Ограничения

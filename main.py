@@ -2,7 +2,7 @@ import asyncio
 import logging
 from aiogram import Bot, Dispatcher
 from config import config
-from handlers import some_logic
+from handlers import some_logic, features
 from AI_module import database
 from load_video import init_tiktok_browser, close_tiktok_browser
 
@@ -11,6 +11,7 @@ async def main():
     logging.basicConfig(level=logging.INFO)
 
     await database.init_talker_db()
+    await features.load_state()
     await init_tiktok_browser()
     
     bot = Bot(token=config.bot_token.get_secret_value())

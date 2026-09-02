@@ -3,9 +3,9 @@ from aiogram.filters import Command
 from aiogram.enums import MessageEntityType
 from load_video import youtube, tiktok, pornhub
 from filters import filters
-from filters.filters import get_filter_list
 from AI_module import memory, pipeline, prompts
 import translating_msgs
+from handlers import features
 
 # Изолированный роутер для групповых обработчиков
 router = Router()
@@ -21,6 +21,8 @@ async def chat_help_command(message: types.Message):
             "/clear - стереть всю память чата.\n"
             "/clear [N] - стереть последние N сообщений.\n"
             "/transliterate [from] [to] [text] - исправить раскладку (ru/en) или перевести в азбуку Морзе (morse).\n"
+            "/features - какие функции активны в этом чате.\n"
+            "/feature [имя] on|off - включить или выключить функцию в этом чате.\n"
             "Если текст набран в неправильной раскладке — предложу исправление.\n"
             "Если в сообщении есть ссылка на видео (YouTube, TikTok, PornHub) - скачаю и пришлю.\n"
         )
@@ -93,11 +95,39 @@ async def transliterate_command(message: types.Message):
         return await message.reply(translating_msgs.morse_coding(text_to_translit, lang, route))
 
 
+@router.message(Command("features"))
+async def features_status_command(message: types.Message):
+    if message.chat.type in ["group", "supergroup"]:
+        lines = ["Функции в этом чате:"]
+        for name, description, state in features.status(message.chat.id):
+            if state == "on":
+                lines.append(f"✅ {name} — {description}")
+            elif state == "off":
+                lines.append(f"❌ {name} — {description} (выключена в этом чате)")
+            else:
+                lines.append(f"🔒 {name} — {description} (запрещена глобально)")
+        await message.reply("\n".join(lines))
+
+
+@router.message(Command("feature"))
+async def feature_command(message: types.Message):
+    if message.chat.type in ["group", "supergroup"]:
+        args = message.text.replace("/feature", "").strip().split()
+        if len(args) != 2 or args[1].lower() not in ("on", "off"):
+            return await message.reply("Формат: /feature <имя> on|off (список функций — /features)")
+        enabled = args[1].lower() == "on"
+        ok, name = await features.set_chat_feature(message.chat.id, args[0], enabled)
+        if not ok:
+            return await message.reply(name)
+        state = "включена" if enabled else "выключена"
+        return await message.reply(f"Готово: {name} теперь {state} в этом чате.")
+
+
 #------------------------------
 #Функции обработки и общий хэндлер на всё
 #Реакция на "баг"
 async def check_bug_message(message: types.Message):
-    if 'bug' in monitor_group_messages.filter and "баг" in message.text.lower():
+    if features.is_enabled(message.chat.id, 'bug') and "баг" in message.text.lower():
         await message.answer(f"🔧 @{message.from_user.username} упомянул баг! Зафиксировано.")
     
 #Реакция на любой URL
@@ -111,31 +141,32 @@ async def check_URL_message(message: types.Message):
             url_text = entity.url
         else:
             continue
-        if 'youtube' in monitor_group_messages.filter and filters.check_youtube_URL_message(url_text):
+        if features.is_enabled(message.chat.id, 'youtube') and filters.check_youtube_URL_message(url_text):
             await youtube.download_youtube_video(url_text, message = message)
-        if 'tiktok' in monitor_group_messages.filter and filters.check_tiktok_URL_message(url_text):
+        if features.is_enabled(message.chat.id, 'tiktok') and filters.check_tiktok_URL_message(url_text):
             await tiktok.download_tiktok_video(url_text, message = message)
-        if 'pornhub' in monitor_group_messages.filter and filters.check_pornhub_URL_message(url_text):
+        if features.is_enabled(message.chat.id, 'pornhub') and filters.check_pornhub_URL_message(url_text):
             await pornhub.download_pornhub_video(url_text, message = message)
 
 #Реакция на текст в неправильной раскладке
 async def check_wrong_layout(message: types.Message):
-    if 'transliterate_auto' in monitor_group_messages.filter:
+    if features.is_enabled(message.chat.id, 'transliterate_auto'):
         corrected = await translating_msgs.auto_correct(message.text)
         if corrected:
             await message.reply(f"Возможно, ты хотел написать: {corrected}")
 
 # Хендлер ловит все сообщения в группе (если выключен Privacy Mode в BotFather)
 @router.message()
-@get_filter_list("filters/handlers.txt")
 async def monitor_group_messages(message: types.Message,  bot: Bot):
     if message.chat.type in ["group", "supergroup"]:
-        if 'AI_chating_memory' in monitor_group_messages.filter or 'AI_chating_responce' in monitor_group_messages.filter:
+        memory_on = features.is_enabled(message.chat.id, 'AI_chating_memory')
+        response_on = features.is_enabled(message.chat.id, 'AI_chating_responce')
+        if memory_on or response_on:
             await pipeline.run_pipeline(
                 message,
                 bot,
-                memory_on='AI_chating_memory' in monitor_group_messages.filter,
-                response_on='AI_chating_responce' in monitor_group_messages.filter,
+                memory_on=memory_on,
+                response_on=response_on,
             )
         await check_bug_message(message)
         await check_URL_message(message)

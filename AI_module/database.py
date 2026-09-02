@@ -28,4 +28,12 @@ async def init_talker_db():
                 last_message_time REAL
             )
         ''')
+        # Функции, выключенные индивидуально для конкретных чатов
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS chat_disabled_features (
+                chat_id INTEGER,
+                feature TEXT,
+                PRIMARY KEY (chat_id, feature)
+            )
+        ''')
         await db.commit()

@@ -1,22 +1,21 @@
-#Декоратор, добавляющий поле filter заполненное данными из path.
-from functools import wraps
+#Декоратор, добавляющий функции список строк из txt (строки с # игнорируются).
 
-def get_filter_list(path: str = None):
+def read_filter_lines(path: str):
+    with open(path, "r", encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
+
+def get_filter_list(path: str):
+    """Возвращает декоратор, который при декорировании читает txt-файл path
+    и сохраняет строки-подстроки в атрибут filter функции. reload() перечитывает
+    файл — для применения правок без перезапуска бота."""
     def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            if (not hasattr(func, "filter")) or (not (path is None)):
-                if path is None:
-                    raise ValueError("Фильтр еще не инициализирован. При первом вызове необходимо передать аргумент 'path'.")
-                with open(path, "r", encoding="utf-8") as f:
-                    wrapper.filter = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
-                    func.filter = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
-            return func(*args, **kwargs)
         def reload():
-            if hasattr(wrapper, "filter"):
-                delattr(wrapper, "filter")
-        wrapper.reload = reload
-        return wrapper
+            func.filter = read_filter_lines(path)
+
+        func.filter = read_filter_lines(path)
+        func.reload = reload
+        return func
+
     return decorator
 
 @get_filter_list("filters/youtube.txt")

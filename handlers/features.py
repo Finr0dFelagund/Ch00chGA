@@ -17,6 +17,8 @@ FEATURES = {
     "AI_chating_memory": "запоминание истории беседы",
     "transliterate_auto": "автоисправление раскладки",
     "stats": "статистика бота",
+    "group_tag_all": "тег /all — всех участников чата",
+    "group_tag": "группы участников /tag",
 }
 
 _LOWER_TO_NAME = {name.lower(): name for name in FEATURES}

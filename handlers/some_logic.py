@@ -7,6 +7,7 @@ from AI_module import memory, pipeline, prompts
 import translating_msgs
 from handlers import features
 import stats
+import group_tag
 
 # Изолированный роутер для групповых обработчиков
 router = Router()
@@ -35,6 +36,8 @@ async def chat_help_command(message: types.Message):
             "/features - какие функции активны в этом чате.\n"
             "/feature [имя] on|off - включить или выключить функцию в этом чате.\n"
             "/stats [раздел] [период] - статистика (summary|top|video|tokens|global, период: today|week|month).\n"
+            "/all - тегнуть всех участников чата.\n"
+            "/tag create <имя> [@ники] - создать группу; /tag <имя> add|remove ... - менять её; /tag <имя> - тегнуть группу.\n"
             "Если текст набран в неправильной раскладке — предложу исправление.\n"
             "Если в сообщении есть ссылка на видео (YouTube, TikTok, PornHub) - скачаю и пришлю.\n"
         )
@@ -209,6 +212,14 @@ async def monitor_group_messages(message: types.Message,  bot: Bot):
             user_id=_user_id(message),
             user_name=from_user.full_name if from_user else None,
             is_command=is_command,
+        )
+        # Реестр участников для /all: любой написавший попадает в список чата.
+        await group_tag.note_user(
+            message.chat.id,
+            user_id=_user_id(message),
+            user_name=from_user.full_name if from_user else None,
+            username=from_user.username if from_user else None,
+            is_bot=bool(from_user and from_user.is_bot),
         )
         memory_on = features.is_enabled(message.chat.id, 'AI_chating_memory')
         response_on = features.is_enabled(message.chat.id, 'AI_chating_responce')

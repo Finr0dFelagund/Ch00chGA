@@ -35,3 +35,16 @@ def check_pornhub_URL_message(url_text: str):
     url_text = url_text.lower()
     if any(i in url_text for i in check_pornhub_URL_message.filter):
         return True
+
+#Сводная проверка: ссылку забирает load_video (единый источник для link_reader,
+#чтобы списки платформ не дублировались в двух местах).
+VIDEO_URL_CHECKERS = (
+    check_youtube_URL_message,
+    check_tiktok_URL_message,
+    check_pornhub_URL_message,
+)
+
+
+def is_video_url(url_text: str) -> bool:
+    """True, если URL обрабатывает load_video (YouTube/TikTok/PornHub)."""
+    return any(check(url_text) for check in VIDEO_URL_CHECKERS)

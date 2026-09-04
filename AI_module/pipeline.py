@@ -1,5 +1,5 @@
 from aiogram.enums import MessageEntityType
-from AI_module import memory, decision, responder, summarizer
+from AI_module import memory, decision, responder, summarizer, link_reader
 import stats
 
 
@@ -18,7 +18,7 @@ def _bot_mentioned(message, bot_username: str) -> bool:
     return False
 
 
-async def run_pipeline(message, bot, *, memory_on: bool, response_on: bool):
+async def run_pipeline(message, bot, *, memory_on: bool, response_on: bool, links_on: bool = False):
     if not memory.should_store_message(message):
         return
 
@@ -30,7 +30,13 @@ async def run_pipeline(message, bot, *, memory_on: bool, response_on: bool):
         user_name = message.from_user.full_name if message.from_user else "unknown"
 
         if memory_on:
-            await memory.append_message(chat_id, "user", user_name, message.text)
+            #Ссылки читаются только при включённой функции links (и при включённой
+            #памяти — иначе нечего сохранять); обогащённый текст остаётся в истории
+            #и попадает в контекст decision и responder.
+            text = message.text
+            if links_on:
+                text = await link_reader.enrich_message_text(message)
+            await memory.append_message(chat_id, "user", user_name, text)
 
         if response_on:
             if _bot_mentioned(message, bot_username):

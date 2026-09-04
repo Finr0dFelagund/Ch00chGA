@@ -42,6 +42,7 @@ async def chat_help_command(message: types.Message):
             "Дни рождения: при входе бот спросит дату и поздравит именинника в 00:00.\n"
             "Если текст набран в неправильной раскладке — предложу исправление.\n"
             "Если в сообщении есть ссылка на видео (YouTube, TikTok, PornHub) - скачаю и пришлю.\n"
+            "Если функция links включена — прочитаю содержимое ссылок (новости, статьи, посты), чтобы быть в контексте беседы.\n"
         )
 
 @router.message(Command("set_personality"))
@@ -228,12 +229,14 @@ async def monitor_group_messages(message: types.Message,  bot: Bot):
             return
         memory_on = features.is_enabled(message.chat.id, 'AI_chating_memory')
         response_on = features.is_enabled(message.chat.id, 'AI_chating_responce')
+        links_on = features.is_enabled(message.chat.id, 'links')
         if memory_on or response_on:
             await pipeline.run_pipeline(
                 message,
                 bot,
                 memory_on=memory_on,
                 response_on=response_on,
+                links_on=links_on,
             )
         await check_bug_message(message)
         await check_URL_message(message)

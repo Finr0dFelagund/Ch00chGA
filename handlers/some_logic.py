@@ -8,6 +8,7 @@ import translating_msgs
 from handlers import features
 import stats
 import group_tag
+import birthdays
 
 # Изолированный роутер для групповых обработчиков
 router = Router()
@@ -38,6 +39,7 @@ async def chat_help_command(message: types.Message):
             "/stats [раздел] [период] - статистика (summary|top|video|tokens|global, период: today|week|month).\n"
             "/all - тегнуть всех участников чата.\n"
             "/tag create <имя> [@ники] - создать группу; /tag <имя> add|remove ... - менять её; /tag <имя> - тегнуть группу.\n"
+            "Дни рождения: при входе бот спросит дату и поздравит именинника в 00:00.\n"
             "Если текст набран в неправильной раскладке — предложу исправление.\n"
             "Если в сообщении есть ссылка на видео (YouTube, TikTok, PornHub) - скачаю и пришлю.\n"
         )
@@ -221,6 +223,9 @@ async def monitor_group_messages(message: types.Message,  bot: Bot):
             username=from_user.username if from_user else None,
             is_bot=bool(from_user and from_user.is_bot),
         )
+        # Дни рождения: дата-сообщение участника запоминается и не обрабатывается дальше.
+        if await birthdays.try_answer(message):
+            return
         memory_on = features.is_enabled(message.chat.id, 'AI_chating_memory')
         response_on = features.is_enabled(message.chat.id, 'AI_chating_responce')
         if memory_on or response_on:

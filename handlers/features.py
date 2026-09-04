@@ -19,6 +19,7 @@ FEATURES = {
     "stats": "статистика бота",
     "group_tag_all": "тег /all — всех участников чата",
     "group_tag": "группы участников /tag",
+    "birthdays": "поздравления с днём рождения",
 }
 
 _LOWER_TO_NAME = {name.lower(): name for name in FEATURES}

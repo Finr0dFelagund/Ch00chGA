@@ -8,3 +8,4 @@ transliterate_auto
 stats
 group_tag_all
 group_tag
+birthdays

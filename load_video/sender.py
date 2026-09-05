@@ -1,11 +1,15 @@
 import asyncio
 import inspect
+import logging
 import os
 import time
 from functools import wraps
 
 from aiogram.types import FSInputFile, Message
+
 import stats
+
+logger = logging.getLogger(__name__)
 
 
 def send_video(func):
@@ -15,6 +19,7 @@ def send_video(func):
     """
     @wraps(func)
     async def wrapper(*args, message: Message, **kwargs):
+        """Скачивает видео функцией func и отправляет результат в чат."""
         url = args[0] if args else kwargs.get("url")
         if not url:
             await message.reply("❌ Ошибка: не удалось найти ссылку на видео.")
@@ -29,10 +34,13 @@ def send_video(func):
                 downloaded_file = await func(url=url, output_path=filename)
             else:
                 loop = asyncio.get_event_loop()
-                downloaded_file = await loop.run_in_executor(None, lambda: func(url=url, output_path=filename))
-        except Exception as e:
-            await stats.record_video(message.chat.id, platform, stats.VIDEO_DOWNLOAD_ERROR, user_id, user_name)
-            print(f"Ошибка при скачивании видео ({platform}): {e}")
+                task = lambda: func(url=url, output_path=filename)
+                downloaded_file = await loop.run_in_executor(None, task)
+        except Exception:
+            await stats.record_video(
+                message.chat.id, platform, stats.VIDEO_DOWNLOAD_ERROR, user_id, user_name
+            )
+            logger.exception("Ошибка при скачивании видео (%s)", platform)
             raise
 
         if downloaded_file and os.path.exists(downloaded_file):
@@ -43,11 +51,16 @@ def send_video(func):
             except Exception as e:
                 await message.answer(f"❌ Не удалось отправить видео. Ошибка: {e}")
                 status = stats.VIDEO_SEND_ERROR
-            await stats.record_video(message.chat.id, platform, status, user_id, user_name)
+            await stats.record_video(
+                message.chat.id, platform, status, user_id, user_name
+            )
             if os.path.exists(downloaded_file):
                 os.remove(downloaded_file)
         else:
-            await message.reply("❌ Не удалось скачать видео. Проверьте ссылку или попробуйте позже.")
-            await stats.record_video(message.chat.id, platform, stats.VIDEO_DOWNLOAD_ERROR, user_id, user_name)
+            await message.reply(
+                "❌ Не удалось скачать видео. Проверьте ссылку или попробуйте позже."
+            )
+            await stats.record_video(
+                message.chat.id, platform, stats.VIDEO_DOWNLOAD_ERROR, user_id, user_name
+            )
     return wrapper
-

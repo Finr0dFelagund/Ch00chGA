@@ -6,6 +6,7 @@ _cache = {}
 
 
 def load(name: str) -> str:
+    """Текст промпта name.txt (с кэшированием)."""
     if name not in _cache:
         with open(os.path.join(PROMPTS_DIR, name + ".txt"), "r", encoding="utf-8") as f:
             _cache[name] = f.read()
@@ -13,6 +14,7 @@ def load(name: str) -> str:
 
 
 def render(name: str, **values) -> str:
+    """Промпт с подстановкой {{KEY}} из переданных значений."""
     text = load(name)
     for key, value in values.items():
         text = text.replace("{{%s}}" % key.upper(), str(value))

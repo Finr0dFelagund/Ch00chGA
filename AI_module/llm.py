@@ -1,6 +1,11 @@
-from config import config
+import logging
+
 from openai import AsyncOpenAI
+
+from config import config
 import stats
+
+logger = logging.getLogger(__name__)
 
 ai_client = AsyncOpenAI(
     api_key=config.AI_api_token.get_secret_value(),
@@ -10,6 +15,7 @@ ai_client = AsyncOpenAI(
 
 async def chat(messages, *, temperature: float = 0.7, max_tokens: int = 400,
                chat_id=None, tag: str = None) -> str:
+    """Ответ DeepSeek; при отсутствии контента возвращает пустую строку."""
     response = await ai_client.chat.completions.create(
         model="deepseek-chat",
         messages=messages,

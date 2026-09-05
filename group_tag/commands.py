@@ -22,10 +22,12 @@ FORMAT_HINT = (
 
 
 def _is_group(message) -> bool:
+    """True для групповых чатов (group/supergroup)."""
     return message.chat.type in GROUP_TYPES
 
 
 def _user_id(message):
+    """Идентификатор автора сообщения либо None."""
     return message.from_user.id if message.from_user else None
 
 
@@ -36,6 +38,7 @@ def _tail(message) -> str:
 
 
 async def _need_feature(message, feature: str) -> bool:
+    """Проверяет включённость функции в чате и сообщает об отказе."""
     if features.is_enabled(message.chat.id, feature):
         return True
     if features.is_allowed(feature):
@@ -54,6 +57,7 @@ async def _reply_long(message, text: str):
 
 
 async def _send_mentions(message, members):
+    """Отправляет сообщение с упоминаниями участников."""
     chunks = mentions.build_chunks(members)
     for text, entities in chunks:
         await message.answer(text, entities=entities or None)
@@ -131,6 +135,7 @@ async def _tag_all(message):
 
 @router.message(Command("all"))
 async def all_command(message: types.Message):
+    """Тегает всех известных боту участников чата (/all)."""
     if not _is_group(message):
         return
     await record_command(message.chat.id, _user_id(message), "all")
@@ -138,6 +143,7 @@ async def all_command(message: types.Message):
 
 
 async def _do_create(message, tokens):
+    """Создаёт именованный тег с переданными участниками."""
     if not tokens:
         await message.reply("Имя тега не указано.\n" + FORMAT_HINT)
         return
@@ -164,6 +170,7 @@ async def _do_create(message, tokens):
 
 
 async def _do_list(message):
+    """Показывает все теги чата."""
     rows = await tags.list_tags(message.chat.id)
     if not rows:
         await message.reply("Тегов пока нет.\n" + FORMAT_HINT)
@@ -175,6 +182,7 @@ async def _do_list(message):
 
 
 async def _do_tag_members(message, name):
+    """Тегает участников именованного тега."""
     if not await tags.tag_exists(message.chat.id, name):
         await message.reply(f"Нет тега «{name}».")
         return
@@ -186,6 +194,7 @@ async def _do_tag_members(message, name):
 
 
 async def _do_add(message, name, entries):
+    """Добавляет участников в тег."""
     if not await tags.tag_exists(message.chat.id, name):
         await message.reply(f"Нет тега «{name}» — сначала /tag create {name}.")
         return
@@ -212,6 +221,7 @@ async def _do_add(message, name, entries):
 
 
 async def _do_remove(message, name, entries):
+    """Удаляет участников из тега."""
     if not await tags.tag_exists(message.chat.id, name):
         await message.reply(f"Нет тега «{name}».")
         return
@@ -235,12 +245,14 @@ async def _do_remove(message, name, entries):
 
 
 async def _do_clear(message):
+    """Удаляет все теги чата."""
     await tags.clear_tags(message.chat.id)
     await message.reply("Все теги чата удалены. Реестр /all не тронут.")
 
 
 @router.message(Command("tag"))
 async def tag_command(message: types.Message):
+    """Роутер подкоманд /tag."""
     if not _is_group(message):
         return
     await record_command(message.chat.id, _user_id(message), "tag")
@@ -285,4 +297,3 @@ async def tag_command(message: types.Message):
         await _do_add(message, name, entries)
     else:
         await _do_remove(message, name, entries)
-

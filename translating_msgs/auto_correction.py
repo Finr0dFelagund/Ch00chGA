@@ -1,8 +1,11 @@
+import logging
 import re
 
 from AI_module import llm
 from translating_msgs import prompts
 from translating_msgs.keyboard_layout import change_kb_layout
+
+logger = logging.getLogger(__name__)
 
 CORRECTION_MAX_TOKENS = 20
 
@@ -41,6 +44,7 @@ def _parse_correction(text: str, source: str = "") -> str:
 
 
 async def _need_correction(text: str, chat_id=None) -> str:
+    """Спрашивает детектор раскладки: маршрут исправления либо «нет»."""
     system = prompts.render("layout_detector", text=text)
     try:
         raw = await llm.chat(
@@ -51,7 +55,7 @@ async def _need_correction(text: str, chat_id=None) -> str:
             tag="layout",
         )
     except Exception as e:
-        print(f"Ошибка детектора раскладки: {e}")
+        logger.warning("Ошибка детектора раскладки: %s", e)
         return "нет"
     return _parse_correction(raw, text)
 

@@ -11,6 +11,7 @@ _events_attached = False
 
 
 async def _on_member_join(event):
+    """Добавляет вошедшего участника в реестр чата."""
     # Реестр пополняется только людьми: ботов исключает handlers.member_events.
     from group_tag import registry
 
@@ -18,6 +19,7 @@ async def _on_member_join(event):
 
 
 async def _on_member_left(event):
+    """Убирает вышедшего участника из реестра и всех его тегов."""
     from group_tag import registry
 
     await registry.remove_user(event.chat_id, event.user_id)

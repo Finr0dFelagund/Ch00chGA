@@ -1,6 +1,9 @@
 #Тариф DeepSeek из stats/prices.txt: кэш с периодической перезагрузкой.
+import logging
 import os
 import time
+
+logger = logging.getLogger(__name__)
 
 PRICES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prices.txt")
 RELOAD_INTERVAL = 60.0
@@ -22,7 +25,7 @@ def _read_prices() -> dict:
                     key, _, value = line.partition("=")
                     prices[key.strip().lower()] = float(value.strip())
     except Exception as e:
-        print(f"Ошибка чтения тарифа {PRICES_PATH}: {e}")
+        logger.warning("Ошибка чтения тарифа %s: %s", PRICES_PATH, e)
     return prices
 
 

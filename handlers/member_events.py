@@ -49,6 +49,7 @@ def add_left_listener(func):
 
 
 async def _dispatch(listeners, event: MemberEvent):
+    """Передаёт событие подписчикам; каждая ошибка изолируется."""
     if event.is_bot:
         # Боты (включая самого себя) как «участники» подписчикам не интересны.
         return
@@ -60,6 +61,7 @@ async def _dispatch(listeners, event: MemberEvent):
 
 
 def _event(user: types.User, chat: types.Chat) -> MemberEvent:
+    """Собирает MemberEvent из пользователя и чата апдейта."""
     return MemberEvent(
         chat_id=chat.id,
         chat_type=chat.type,
@@ -72,12 +74,14 @@ def _event(user: types.User, chat: types.Chat) -> MemberEvent:
 
 @router.chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
 async def _member_joined(update: types.ChatMemberUpdated):
+    """Обрабатывает вход участника в групповой чат."""
     if update.chat.type in _CHAT_TYPES:
         await _dispatch(_join_listeners, _event(update.new_chat_member.user, update.chat))
 
 
 @router.chat_member(ChatMemberUpdatedFilter(member_status_changed=LEAVE_TRANSITION))
 async def _member_left(update: types.ChatMemberUpdated):
+    """Обрабатывает выход участника из группового чата."""
     if update.chat.type in _CHAT_TYPES:
         await _dispatch(_left_listeners, _event(update.new_chat_member.user, update.chat))
 
@@ -86,11 +90,13 @@ class _MemberServiceMessage(Filter):
     """Сервисное сообщение группы о добавлении или выходе участника."""
 
     async def __call__(self, message: types.Message) -> bool:
+        """True для сервисного сообщения о входе или выходе участников."""
         return bool(message.new_chat_members) or bool(message.left_chat_member)
 
 
 @router.message(_MemberServiceMessage())
 async def _member_service_message(message: types.Message):
+    """Обрабатывает сервисные сообщения о входе и выходе участников."""
     if message.chat.type not in _CHAT_TYPES:
         return
     for user in message.new_chat_members or ():

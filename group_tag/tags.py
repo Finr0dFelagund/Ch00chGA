@@ -15,6 +15,7 @@ RESERVED_NAMES = {"create", "list", "clear"}
 
 
 def tag_key(tag_name: str) -> str:
+    """Ключ тега: имя в нижнем регистре."""
     return tag_name.strip().lower()
 
 
@@ -90,6 +91,7 @@ async def add_members(chat_id: int, tag_name: str, members) -> int:
 
 
 async def count_members(chat_id: int, tag_name: str) -> int:
+    """Число участников в теге."""
     key = tag_key(tag_name)
     async with aiosqlite.connect(database.DB_NAME) as db:
         async with db.execute(
@@ -175,6 +177,7 @@ async def get_tag_members(chat_id: int, tag_name: str):
 
 
 async def tag_exists(chat_id: int, tag_name: str) -> bool:
+    """Существует ли тег с таким именем в чате."""
     key = tag_key(tag_name)
     async with aiosqlite.connect(database.DB_NAME) as db:
         async with db.execute(

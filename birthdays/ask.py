@@ -38,6 +38,7 @@ async def _api_birthday(user_id: int):
 
 
 async def _ask_date(chat_id: int, user_id: int, user_name, username):
+    """Спрашивает дату рождения у участника прямо в чате."""
     fragment, entity = mention.build(user_id, user_name, username)
     text = (
         f"{fragment}, привет! Я записываю дни рождения участников.\n"
@@ -129,5 +130,3 @@ async def _bot_added(event: types.ChatMemberUpdated, bot: Bot):
         await bot.send_message(event.chat.id, text)
     except Exception:
         logger.exception("Не удалось опубликовать приветствие в чате %s", event.chat.id)
-
-

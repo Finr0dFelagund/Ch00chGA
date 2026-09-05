@@ -18,6 +18,7 @@ _TECHNICAL = {"no_history", "empty", "parse_failed", "error"}
 
 
 def _has(text: str, *keys) -> bool:
+    """True, если в тексте есть хотя бы один из ключей."""
     return any(key in text for key in keys)
 
 
@@ -30,7 +31,8 @@ def categorize_reason(should: bool, reason) -> str:
         return "обращение"
 
     if not should:
-        if _has(text, "не к боту", "между собой") or (_has(text, "диалог") and _has(text, "участник")):
+        is_dialog = _has(text, "диалог") and _has(text, "участник")
+        if _has(text, "не к боту", "между собой") or is_dialog:
             return "диалог"
         if _has(text, "без содержа", "голая ссылка", "ссылка без", "служебн",
                 "не должен отвечать", "не нужно отвечать", "не по делу"):

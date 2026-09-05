@@ -1,15 +1,14 @@
-import aiosqlite
 import os
 
-import os
 import aiosqlite
 
 AI_MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_NAME = os.path.join(AI_MODULE_DIR, "bot_talker_memory.db")
 
+
 async def init_talker_db():
+    """Создаёт таблицы бота: история, метаданные чатов, отключённые функции."""
     async with aiosqlite.connect(DB_NAME) as db:
-        #Окно
         await db.execute('''
             CREATE TABLE IF NOT EXISTS chat_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,7 +18,7 @@ async def init_talker_db():
                 text TEXT
             )
         ''')
-        # Таблица для саммари и таймеров активности
+        #Таблица для саммари и таймеров активности
         await db.execute('''
             CREATE TABLE IF NOT EXISTS chat_meta (
                 chat_id INTEGER PRIMARY KEY,
@@ -28,7 +27,7 @@ async def init_talker_db():
                 last_message_time REAL
             )
         ''')
-        # Функции, выключенные индивидуально для конкретных чатов
+        #Функции, выключенные индивидуально для конкретных чатов
         await db.execute('''
             CREATE TABLE IF NOT EXISTS chat_disabled_features (
                 chat_id INTEGER,

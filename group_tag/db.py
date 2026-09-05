@@ -77,4 +77,3 @@ async def init_db():
             await db.execute(statement)
         await _migrate_tag_members(db)
         await db.commit()
-

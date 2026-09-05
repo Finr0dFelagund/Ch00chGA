@@ -1,9 +1,15 @@
+import logging
+
 from aiogram.enums import MessageEntityType
-from AI_module import memory, decision, responder, summarizer, link_reader
+
+from AI_module import decision, link_reader, memory, responder, summarizer
 import stats
+
+logger = logging.getLogger(__name__)
 
 
 def _bot_mentioned(message, bot_username: str) -> bool:
+    """True, если сообщение адресовано боту: @username или сущность MENTION."""
     if not bot_username:
         return False
     text = message.text or ""
@@ -18,7 +24,9 @@ def _bot_mentioned(message, bot_username: str) -> bool:
     return False
 
 
-async def run_pipeline(message, bot, *, memory_on: bool, response_on: bool, links_on: bool = False):
+async def run_pipeline(message, bot, *, memory_on: bool, response_on: bool,
+                       links_on: bool = False):
+    """Сохраняет сообщение в память (с чтением ссылок) и решает об ответе."""
     if not memory.should_store_message(message):
         return
 
@@ -53,7 +61,7 @@ async def run_pipeline(message, bot, *, memory_on: bool, response_on: bool, link
                     if memory_on:
                         await memory.append_message(chat_id, "assistant", bot_name, text)
                 else:
-                    print(f"[pipeline] chat={chat_id} пустой ответ (reason={reason})")
+                    logger.info("[pipeline] chat=%s пустой ответ (reason=%s)", chat_id, reason)
 
         if memory_on:
             await summarizer.maybe_compress(chat_id)

@@ -2,6 +2,7 @@
 #Строка без # в файле — функция разрешена; закомментированная — запрещена везде
 #и не может быть включена командой ни в одном чате.
 import aiosqlite
+
 from AI_module import database, memory
 from filters.filters import read_filter_lines
 
@@ -94,7 +95,8 @@ async def set_chat_feature(chat_id: int, feature: str, enabled: bool):
         return False, f"Нет такой функции: {feature}."
     if name not in _allowed:
         return False, f"{name} запрещена глобально в {HANDLERS_PATH} — включить нельзя."
-    #Сериализация в рамках чата: БД и кэш обновляются атомарно (per-chat лок из AI_module.memory)
+    #Сериализация в рамках чата: БД и кэш обновляются атомарно
+    #(per-chat лок из AI_module.memory)
     async with memory.chat_lock(chat_id):
         async with aiosqlite.connect(database.DB_NAME) as db:
             if enabled:
@@ -104,7 +106,8 @@ async def set_chat_feature(chat_id: int, feature: str, enabled: bool):
                 )
             else:
                 await db.execute(
-                    "INSERT OR IGNORE INTO chat_disabled_features (chat_id, feature) VALUES (?, ?)",
+                    "INSERT OR IGNORE INTO chat_disabled_features "
+                    "(chat_id, feature) VALUES (?, ?)",
                     (chat_id, name),
                 )
             await db.commit()

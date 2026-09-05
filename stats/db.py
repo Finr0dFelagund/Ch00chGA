@@ -1,5 +1,6 @@
 #Схема таблиц статистики (общая SQLite-база проекта).
 import aiosqlite
+
 from AI_module import database
 
 _DDL = [

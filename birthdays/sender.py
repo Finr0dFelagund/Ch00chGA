@@ -19,6 +19,7 @@ MAX_MESSAGE_TEXT = 4000
 
 
 def _seconds_until_next_midnight() -> float:
+    """Секунды до ближайшей полуночи по локальному времени."""
     now = datetime.datetime.now()
     next_midnight = (now + datetime.timedelta(days=1)).replace(
         hour=0, minute=0, second=0, microsecond=0
@@ -35,6 +36,7 @@ async def _fresh_profile(chat_id, user_id, snap_name, snap_username):
 
 
 async def _send_greeting(bot: Bot, row):
+    """Отправляет поздравление участнику и отмечает год поздравления."""
     chat_id, user_id, snap_name, snap_username, year, _ = row
     user_name, username = await _fresh_profile(chat_id, user_id, snap_name, snap_username)
     age = None

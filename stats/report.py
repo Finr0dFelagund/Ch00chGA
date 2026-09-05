@@ -1,14 +1,15 @@
 #Формирование текстовых отчётов статистики по чатам и периодам.
 import time
+
 import aiosqlite
+
 from AI_module import database
-from stats import prices
-from stats import categories
+from stats import categories, prices
 from stats.collect import (
     TAG_DECISION,
+    TAG_LAYOUT,
     TAG_RESPONDER,
     TAG_SUMMARIZER,
-    TAG_LAYOUT,
 )
 
 TAG_LABELS = {
@@ -72,16 +73,19 @@ def _ts_conds(start, end):
 
 
 async def _fetch_all(db, sql: str, params: tuple):
+    """Все строки результата запроса."""
     async with db.execute(sql, params) as cur:
         return await cur.fetchall()
 
 
 async def _fetch_one(db, sql: str, params: tuple):
+    """Первая строка результата запроса либо None."""
     rows = await _fetch_all(db, sql, params)
     return rows[0] if rows else None
 
 
 def _fmt_tokens(value: int) -> str:
+    """Компактный вид числа токенов: суффиксы K и M."""
     if value >= 1_000_000:
         return f"{value / 1_000_000:.2f}M"
     if value >= 1_000:
@@ -90,10 +94,12 @@ def _fmt_tokens(value: int) -> str:
 
 
 def _fmt_cost(value: float) -> str:
+    """Стоимость в долларах с двумя знаками после запятой."""
     return f"${value:.2f}"
 
 
 def _scope_label(chat_id, period: str) -> str:
+    """Подпись охвата отчёта: чат (или все чаты) и период."""
     chat = "все чаты" if chat_id is None else f"чат {chat_id}"
     label = PERIOD_LABELS.get(period, period)
     return f"{chat}, {label}"
@@ -127,6 +133,7 @@ async def _messages_info(db, chat_id, start, end):
 
 
 async def _top_users(db, chat_id, start, end, limit=TOP_LIMIT):
+    """Топ активных пользователей по числу сообщений."""
     where, params = _scope_where(chat_id, start, end)
     return await _fetch_all(
         db,
@@ -137,6 +144,7 @@ async def _top_users(db, chat_id, start, end, limit=TOP_LIMIT):
 
 
 async def _top_commands(db, chat_id, start, end, limit=TOP_LIMIT):
+    """Топ команд по числу вызовов."""
     where, params = _scope_where(chat_id, start, end)
     return await _fetch_all(
         db,
@@ -162,6 +170,7 @@ async def _decisions_info(db, chat_id, start, end):
 
 
 async def _videos_info(db, chat_id, start, end):
+    """Сводка скачиваний видео: (платформа, статус, число)."""
     where, params = _scope_where(chat_id, start, end)
     return await _fetch_all(
         db,
@@ -171,6 +180,7 @@ async def _videos_info(db, chat_id, start, end):
 
 
 async def _top_video_users(db, chat_id, start, end, limit=TOP_LIMIT):
+    """Топ пользователей по числу скачанных видео."""
     where, params = _scope_where(chat_id, start, end)
     return await _fetch_all(
         db,
@@ -181,6 +191,7 @@ async def _top_video_users(db, chat_id, start, end, limit=TOP_LIMIT):
 
 
 async def _usage_by_tag(db, chat_id, start, end):
+    """Расход токенов и стоимость по функциям (тегам LLM)."""
     where, params = _scope_where(chat_id, start, end)
     return await _fetch_all(
         db,
@@ -191,6 +202,7 @@ async def _usage_by_tag(db, chat_id, start, end):
 
 
 async def _top_chats(db, start, end, limit=TOP_LIMIT):
+    """Топ чатов по числу сообщений (для глобальной сводки)."""
     ts_sql, params = _ts_conds(start, end)
     where = ""
     if ts_sql:
@@ -203,18 +215,21 @@ async def _top_chats(db, start, end, limit=TOP_LIMIT):
     )
 
 def _format_messages_section(total, unique, period, first_ts=None):
+    """Строки сводки по сообщениям: всего, уникальные, команды, среднее."""
     days = _period_days(period, first_ts) if period == "all" else _period_days(period)
     avg = total / max(1, days)
     return [f"Сообщений обработано: {total} · уникальных пользователей: {unique} · среднее в день: {avg:.1f}"]
 
 
 def _format_users(lines, rows):
+    """Дописывает в lines строки топа пользователей."""
     if rows:
         items = ", ".join(f"{name or 'без имени'} ({cnt})" for name, cnt in rows)
         lines.append(f"Активные пользователи: {items}")
 
 
 def _format_decisions(lines, should_rows, reason_rows):
+    """Дописывает строки решений фильтра с категориями причин."""
     total = sum(cnt for _, cnt in should_rows)
     if total == 0:
         lines.append("Фильтр «отвечать»: событий нет")
@@ -240,6 +255,7 @@ def _format_decisions(lines, should_rows, reason_rows):
 
 
 def _format_videos(lines, rows):
+    """Дописывает строки статистики скачиваний видео."""
     if not rows:
         lines.append("Видео: скачиваний нет")
         return
@@ -253,6 +269,7 @@ def _format_videos(lines, rows):
 
 
 def _format_tokens_cost(lines, usage_rows):
+    """Дописывает строки токенов и стоимости по функциям."""
     if not usage_rows:
         lines.append("Токены: записей нет")
         return
@@ -351,9 +368,10 @@ async def build_tokens(chat_id, period="all") -> str:
 
 
 def is_valid_section(section: str) -> bool:
+    """True, если раздел статистики поддерживается."""
     return section in ("summary", "top", "video", "tokens", "global")
 
 
 def is_valid_period(period: str) -> bool:
+    """True, если период отчёта поддерживается."""
     return period in PERIODS
-

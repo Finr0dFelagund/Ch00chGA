@@ -35,6 +35,7 @@ def _normalize_year(year):
 
 
 def _days_in_month(month: int, year) -> int:
+    """Число дней в месяце с учётом високосного года."""
     if month == 2:
         if year is None:
             return 29
@@ -47,6 +48,7 @@ def _days_in_month(month: int, year) -> int:
 
 
 def _valid(day: int, month: int, year) -> bool:
+    """Проверяет корректность дня, месяца и (при наличии) года."""
     if not 1 <= month <= 12 or day < 1:
         return False
     return day <= _days_in_month(month, year)

@@ -66,9 +66,13 @@ en_to_morse = {
     'z': ' --.. '
 }
 
-def morse_coding(in_str: str, lang: Literal['en', 'ru'], direction: Literal['lang', 'morse']) -> str:
+
+def morse_coding(in_str: str, lang: Literal['en', 'ru'],
+                 direction: Literal['lang', 'morse']) -> str:
+    """Переводит текст в азбуку Морзе и обратно."""
     if direction == 'morse':
-        in_str = re.sub(re.compile('|'.join(map(re.escape, string.punctuation + string.digits))), r'', in_str)
+        junk = re.compile('|'.join(map(re.escape, string.punctuation + string.digits)))
+        in_str = junk.sub('', in_str)
         in_str = re.sub(r'\s+', r'/', in_str)
         in_str = ' '.join(in_str).lower()
         if lang == 'en':

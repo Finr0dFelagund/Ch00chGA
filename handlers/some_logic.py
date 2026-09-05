@@ -1,20 +1,23 @@
-from aiogram import Router, types, Bot
-from aiogram.filters import Command
+from aiogram import Bot, Router, types
 from aiogram.enums import MessageEntityType
-from load_video import youtube, tiktok, pornhub
-from filters import filters
-from AI_module import memory, pipeline, prompts
-import translating_msgs
-from handlers import features
-import stats
-import group_tag
-import birthdays
+from aiogram.filters import Command
 
-# Изолированный роутер для групповых обработчиков
+from AI_module import memory, pipeline, prompts
+from filters import filters
+from handlers import features
+from load_video import pornhub, tiktok, youtube
+
+import birthdays
+import group_tag
+import stats
+import translating_msgs
+
+#Изолированный роутер для групповых обработчиков
 router = Router()
 
 
 def _user_id(message) -> int | None:
+    """Идентификатор автора сообщения либо None."""
     return message.from_user.id if message.from_user else None
 
 
@@ -22,9 +25,11 @@ def stats_visible(message) -> bool:
     """Ворота доступа к статистике: сейчас открыты всем, позже можно ограничить."""
     return True
 
-# Хэндлеры на команды
+
+#Хэндлеры на команды
 @router.message(Command("help"))
-async def chat_help_command(message: types.Message):
+async def help_command(message: types.Message):
+    """Справка по командам и возможностям бота."""
     if message.chat.type in ["group", "supergroup"]:
         await stats.record_command(message.chat.id, _user_id(message), "help")
         await message.reply(
@@ -33,20 +38,27 @@ async def chat_help_command(message: types.Message):
             "/get_personality - показать текущую личность.\n"
             "/clear - стереть всю память чата.\n"
             "/clear [N] - стереть последние N сообщений.\n"
-            "/transliterate [from] [to] [text] - исправить раскладку (ru/en) или перевести в азбуку Морзе (morse).\n"
+            "/transliterate [from] [to] [text] - исправить раскладку (ru/en) или "
+            "перевести в азбуку Морзе (morse).\n"
             "/features - какие функции активны в этом чате.\n"
             "/feature [имя] on|off - включить или выключить функцию в этом чате.\n"
-            "/stats [раздел] [период] - статистика (summary|top|video|tokens|global, период: today|week|month).\n"
+            "/stats [раздел] [период] - статистика (summary|top|video|tokens|global, "
+            "период: today|week|month).\n"
             "/all - тегнуть всех участников чата.\n"
-            "/tag create <имя> [@ники] - создать группу; /tag <имя> add|remove ... - менять её; /tag <имя> - тегнуть группу.\n"
+            "/tag create <имя> [@ники] - создать группу; /tag <имя> add|remove ... - "
+            "менять её; /tag <имя> - тегнуть группу.\n"
             "Дни рождения: при входе бот спросит дату и поздравит именинника в 00:00.\n"
             "Если текст набран в неправильной раскладке — предложу исправление.\n"
-            "Если в сообщении есть ссылка на видео (YouTube, TikTok, PornHub) - скачаю и пришлю.\n"
-            "Если функция links включена — прочитаю содержимое ссылок (новости, статьи, посты), чтобы быть в контексте беседы.\n"
+            "Если в сообщении есть ссылка на видео (YouTube, TikTok, PornHub) - "
+            "скачаю и пришлю.\n"
+            "Если функция links включена — прочитаю содержимое ссылок "
+            "(новости, статьи, посты), чтобы быть в контексте беседы.\n"
         )
 
+
 @router.message(Command("set_personality"))
-async def chat_help_command(message: types.Message):
+async def set_personality_command(message: types.Message):
+    """Устанавливает личность чата."""
     if message.chat.type in ["group", "supergroup"]:
         await stats.record_command(message.chat.id, _user_id(message), "set_personality")
         new_prompt = message.text.replace("/set_personality", "").strip()
@@ -56,15 +68,22 @@ async def chat_help_command(message: types.Message):
         else:
             await message.reply("А кто указывать промпт будет?")
 
+
 @router.message(Command("get_personality"))
-async def chat_help_command(message: types.Message):
+async def get_personality_command(message: types.Message):
+    """Показывает текущую личность чата."""
     if message.chat.type in ["group", "supergroup"]:
         await stats.record_command(message.chat.id, _user_id(message), "get_personality")
-        personality = await memory.get_personality(chat_id=message.chat.id) or prompts.load("personality_default")
+        personality = (
+            await memory.get_personality(chat_id=message.chat.id)
+            or prompts.load("personality_default")
+        )
         await message.reply(personality)
+
 
 @router.message(Command("clear"))
 async def clear_memory_command(message: types.Message):
+    """Стирает историю чата целиком или последние N сообщений."""
     if message.chat.type in ["group", "supergroup"]:
         await stats.record_command(message.chat.id, _user_id(message), "clear")
         async with memory.chat_lock(message.chat.id):
@@ -84,8 +103,10 @@ async def clear_memory_command(message: types.Message):
                 await memory.clear_history(message.chat.id)
                 await message.reply("Ультралоботомия окончена.")
 
+
 @router.message(Command("transliterate"))
 async def transliterate_command(message: types.Message):
+    """Исправляет раскладку (ru/en) или переводит в азбуку Морзе и обратно."""
     if message.chat.type in ["group", "supergroup"]:
         await stats.record_command(message.chat.id, _user_id(message), "transliterate")
         in_str = message.text.replace('/transliterate', '').strip()
@@ -102,10 +123,12 @@ async def transliterate_command(message: types.Message):
             return await message.reply('Укажи языки откуда-куда: "en", "ru", "morse"')
         if not text_to_translit or to_lang == from_lang:
             return await message.reply('И что тут переводить??')
-        
+
         if from_lang in ['ru', 'en'] and to_lang in ['ru', 'en']:
-            return await message.reply(translating_msgs.change_kb_layout(text_to_translit, 'to_' + to_lang))
-        
+            return await message.reply(
+                translating_msgs.change_kb_layout(text_to_translit, 'to_' + to_lang)
+            )
+
         if to_lang == 'morse':
             route = to_lang
         elif from_lang == 'morse':
@@ -119,6 +142,7 @@ async def transliterate_command(message: types.Message):
 
 @router.message(Command("features"))
 async def features_status_command(message: types.Message):
+    """Показывает состояние функций в чате."""
     if message.chat.type in ["group", "supergroup"]:
         await stats.record_command(message.chat.id, _user_id(message), "features")
         lines = ["Функции в этом чате:"]
@@ -134,6 +158,7 @@ async def features_status_command(message: types.Message):
 
 @router.message(Command("feature"))
 async def feature_command(message: types.Message):
+    """Включает или выключает функцию в этом чате."""
     if message.chat.type in ["group", "supergroup"]:
         await stats.record_command(message.chat.id, _user_id(message), "feature")
         args = message.text.replace("/feature", "").strip().split()
@@ -149,6 +174,7 @@ async def feature_command(message: types.Message):
 
 @router.message(Command("stats"))
 async def stats_command(message: types.Message):
+    """Показывает статистику по разделу и периоду."""
     if message.chat.type in ["group", "supergroup"]:
         await stats.record_command(message.chat.id, _user_id(message), "stats")
         if not stats_visible(message) or not features.is_enabled(message.chat.id, "stats"):
@@ -158,7 +184,10 @@ async def stats_command(message: types.Message):
         section = args[0].lower() if args else "summary"
         period = args[1].lower() if len(args) > 1 else "all"
         if not stats.is_valid_section(section) or not stats.is_valid_period(period):
-            await message.reply("Формат: /stats [summary|top|video|tokens|global] [all|today|yesterday|week|month]")
+            await message.reply(
+                "Формат: /stats [summary|top|video|tokens|global] "
+                "[all|today|yesterday|week|month]"
+            )
             return
         chat_id = None if section == "global" else message.chat.id
         if section == "summary":
@@ -172,15 +201,18 @@ async def stats_command(message: types.Message):
         await message.reply(text)
 
 
-#------------------------------
-#Функции обработки и общий хэндлер на всё
-#Реакция на "баг"
+#--------------------------------------
+#Функции обработки сообщений и общий хэндлер на всё
+#Реакция на слово «баг»
 async def check_bug_message(message: types.Message):
+    """Помечает сообщение о «баге» и шлёт уведомление."""
     if features.is_enabled(message.chat.id, 'bug') and "баг" in message.text.lower():
         await message.answer(f"🔧 @{message.from_user.username} упомянул баг! Зафиксировано.")
-    
+
+
 #Реакция на любой URL
 async def check_URL_message(message: types.Message):
+    """Скачивает видео, если ссылка относится к платформам load_video."""
     if not message.entities:
         return
     for entity in message.entities:
@@ -191,22 +223,26 @@ async def check_URL_message(message: types.Message):
         else:
             continue
         if features.is_enabled(message.chat.id, 'youtube') and filters.check_youtube_URL_message(url_text):
-            await youtube.download_youtube_video(url_text, message = message)
+            await youtube.download_youtube_video(url_text, message=message)
         if features.is_enabled(message.chat.id, 'tiktok') and filters.check_tiktok_URL_message(url_text):
-            await tiktok.download_tiktok_video(url_text, message = message)
+            await tiktok.download_tiktok_video(url_text, message=message)
         if features.is_enabled(message.chat.id, 'pornhub') and filters.check_pornhub_URL_message(url_text):
-            await pornhub.download_pornhub_video(url_text, message = message)
+            await pornhub.download_pornhub_video(url_text, message=message)
+
 
 #Реакция на текст в неправильной раскладке
 async def check_wrong_layout(message: types.Message):
+    """Предлагает исправление текста, набранного в неправильной раскладке."""
     if features.is_enabled(message.chat.id, 'transliterate_auto'):
         corrected = await translating_msgs.auto_correct(message.text, chat_id=message.chat.id)
         if corrected:
             await message.reply(f"Возможно, ты хотел написать: {corrected}")
 
-# Хендлер ловит все сообщения в группе (если выключен Privacy Mode в BotFather)
+
+#Хэндлер ловит все сообщения в группе (если выключен Privacy Mode в BotFather)
 @router.message()
-async def monitor_group_messages(message: types.Message,  bot: Bot):
+async def monitor_group_messages(message: types.Message, bot: Bot):
+    """Общий обработчик: статистика, реестр, память, видео и раскладка."""
     if message.chat.type in ["group", "supergroup"]:
         from_user = message.from_user
         is_command = bool(message.text and message.text.lstrip().startswith("/"))
@@ -216,7 +252,7 @@ async def monitor_group_messages(message: types.Message,  bot: Bot):
             user_name=from_user.full_name if from_user else None,
             is_command=is_command,
         )
-        # Реестр участников для /all: любой написавший попадает в список чата.
+        #Реестр участников для /all: любой написавший попадает в список чата.
         await group_tag.note_user(
             message.chat.id,
             user_id=_user_id(message),
@@ -224,7 +260,7 @@ async def monitor_group_messages(message: types.Message,  bot: Bot):
             username=from_user.username if from_user else None,
             is_bot=bool(from_user and from_user.is_bot),
         )
-        # Дни рождения: дата-сообщение участника запоминается и не обрабатывается дальше.
+        #Дни рождения: дата-сообщение участника запоминается и не обрабатывается дальше.
         if await birthdays.try_answer(message):
             return
         memory_on = features.is_enabled(message.chat.id, 'AI_chating_memory')

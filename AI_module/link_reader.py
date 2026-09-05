@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 
 import aiohttp
 from aiogram.enums import MessageEntityType
+
 from filters.filters import is_video_url
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ _URL_RE = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
 
 
 def _is_http(url: str) -> bool:
+    """True для схем http/https."""
     try:
         return urlparse(url).scheme in ("http", "https")
     except ValueError:
@@ -46,7 +48,7 @@ def extract_urls(message) -> list:
     entities = getattr(message, "entities", None) or []
     for entity in entities:
         if entity.type == MessageEntityType.URL:
-            url = text[entity.offset: entity.offset + entity.length].strip()
+            url = text[entity.offset:entity.offset + entity.length].strip()
         elif entity.type == MessageEntityType.TEXT_LINK:
             url = (getattr(entity, "url", "") or "").strip()
         else:
@@ -66,6 +68,7 @@ def extract_urls(message) -> list:
 
 
 def _detect_encoding(raw: bytes, header_charset) -> str:
+    """Кодировка страницы: из заголовка, meta-тега либо utf-8 по умолчанию."""
     if header_charset:
         return header_charset
     match = re.search(rb'<meta[^>]+charset\s*=\s*["\']?([\w\-]+)', raw[:4000], re.IGNORECASE)
@@ -98,6 +101,7 @@ class _ArticleParser(HTMLParser):
                          "thead", "tbody", "figure", "header", "hr", "br"}
 
     def __init__(self):
+        """Готовит парсер: счётчики вложенности, буферы текста и заголовка."""
         super().__init__(convert_charrefs=True)
         self.title = None
         self._in_title = False
@@ -108,6 +112,7 @@ class _ArticleParser(HTMLParser):
         self._started = False
 
     def handle_starttag(self, tag, attrs):
+        """Отмечает вход в заголовочный, игнорируемый или захватываемый тег."""
         tag = tag.lower()
         if tag == "title":
             self._in_title = True
@@ -121,6 +126,7 @@ class _ArticleParser(HTMLParser):
             self._finish()
 
     def handle_endtag(self, tag):
+        """Завершает захват/пропуск при выходе из тега и закрывает блоки."""
         tag = tag.lower()
         if tag == "title":
             self._in_title = False
@@ -135,6 +141,7 @@ class _ArticleParser(HTMLParser):
             self._finish()
 
     def handle_data(self, data):
+        """Собирает текст: заголовок отдельно, остальное — в буфер абзацев."""
         if self._skip:
             return
         if self._in_title:
@@ -151,6 +158,7 @@ class _ArticleParser(HTMLParser):
         self._buf.append(data)
 
     def _finish(self):
+        """Закрывает текущий абзац: сбрасывает буфер в список абзацев."""
         if self._started:
             self._paras.append("".join(self._buf))
             self._buf = []
@@ -158,12 +166,14 @@ class _ArticleParser(HTMLParser):
 
 
 def _clean(value: str | None) -> str:
+    """Убирает пустые значения и схлопывает пробелы в тексте."""
     if not value:
         return ""
     return " ".join(value.split())
 
 
 def _truncate(text: str, limit: int) -> str:
+    """Обрезает текст до limit, по границе слова, с многоточием на конце."""
     if len(text) <= limit:
         return text
     cut = text[:limit].rsplit(" ", 1)[0]
@@ -230,4 +240,3 @@ async def enrich_message_text(message) -> str:
     except Exception:
         logger.debug("Не удалось обогатить сообщение содержанием ссылки", exc_info=True)
     return base
-

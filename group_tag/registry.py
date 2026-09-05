@@ -28,6 +28,7 @@ def clean_username(username) -> str | None:
 
 
 async def _upsert(chat_id: int, user_id: int, user_name=None, username=None, is_bot=False):
+    """Вставляет участника в реестр чата или обновляет его данные."""
     async with memory.chat_lock(chat_id):
         async with aiosqlite.connect(database.DB_NAME) as db:
             await db.execute(
@@ -101,4 +102,3 @@ async def backfill_from_stats(chat_id: int):
                 (chat_id, chat_id),
             )
             await db.commit()
-

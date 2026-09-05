@@ -1,10 +1,13 @@
 import asyncio
 import json
+import logging
 import re
 
 from load_video.sender import send_video
 
-# --- Персистентный браузер для TikTok (Playwright) ---
+logger = logging.getLogger(__name__)
+
+#Персистентный браузер для TikTok (Playwright)
 _playwright = None
 _tiktok_browser = None
 _tiktok_context = None
@@ -13,19 +16,23 @@ _init_lock = asyncio.Lock()
 
 
 async def init_tiktok_browser():
+    """Запускает персистентный браузер Playwright для скачивания TikTok."""
     global _playwright, _tiktok_browser, _tiktok_context, _tiktok_semaphore
     async with _init_lock:
         if _tiktok_browser:
             return
         try:
             from playwright.async_api import async_playwright
+
             _playwright = await async_playwright().start()
             _tiktok_browser = await _playwright.chromium.launch(headless=True)
-            _tiktok_context = await _tiktok_browser.new_context(viewport={'width': 1280, 'height': 720})
+            _tiktok_context = await _tiktok_browser.new_context(
+                viewport={"width": 1280, "height": 720}
+            )
             _tiktok_semaphore = asyncio.Semaphore(1)
-            print("TikTok-браузер запущен.")
-        except Exception as e:
-            print(f"Не удалось запустить TikTok-браузер: {e}")
+            logger.info("TikTok-браузер запущен.")
+        except Exception:
+            logger.exception("Не удалось запустить TikTok-браузер")
             if _tiktok_browser:
                 try:
                     await _tiktok_browser.close()
@@ -35,6 +42,7 @@ async def init_tiktok_browser():
 
 
 async def close_tiktok_browser():
+    """Закрывает браузер Playwright при остановке бота."""
     global _playwright, _tiktok_browser, _tiktok_context, _tiktok_semaphore
     async with _init_lock:
         if _tiktok_browser is None:
@@ -52,10 +60,11 @@ async def close_tiktok_browser():
             except Exception:
                 pass
         _playwright = _tiktok_browser = _tiktok_context = _tiktok_semaphore = None
-        print("TikTok-браузер остановлен.")
+        logger.info("TikTok-браузер остановлен.")
 
 
 def _find_video_urls(obj):
+    """Все ссылки на видеофайлы в данных rehydrate-страницы."""
     out = []
     if isinstance(obj, dict):
         for v in obj.values():
@@ -69,6 +78,7 @@ def _find_video_urls(obj):
 
 
 async def _download_tiktok_video(url, output_path):
+    """Скачивает видео TikTok: rehydrate-данные → CDN-ссылка → файл."""
     page = await _tiktok_context.new_page()
     try:
         await page.goto(url, wait_until='domcontentloaded', timeout=45000)
@@ -77,7 +87,7 @@ async def _download_tiktok_video(url, output_path):
         html = await page.content()
         m = re.search(r'id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>(.*?)</script>', html, re.S)
         if not m:
-            print("TikTok: universal_data не найден")
+            logger.warning("TikTok: universal_data не найден")
             return None
 
         data = json.loads(m.group(1))
@@ -99,7 +109,7 @@ async def _download_tiktok_video(url, output_path):
                 with open(output_path, 'wb') as f:
                     f.write(body)
                 return output_path
-        print("TikTok: видео не скачалось или превышает 48 МБ")
+        logger.warning("TikTok: видео не скачалось или превышает 48 МБ")
         return None
     finally:
         await page.close()
@@ -107,13 +117,14 @@ async def _download_tiktok_video(url, output_path):
 
 @send_video
 async def download_tiktok_video(url: str, output_path: str = "video.mp4") -> str | None:
+    """Скачивает видео TikTok и возвращает путь к файлу либо None."""
     await asyncio.sleep(3)
     if _tiktok_browser is None:
-        print("TikTok: браузер не инициализирован (вызовите init_tiktok_browser)")
+        logger.warning("TikTok: браузер не инициализирован (вызовите init_tiktok_browser)")
         return None
     async with _tiktok_semaphore:
         try:
             return await _download_tiktok_video(url, output_path)
-        except Exception as e:
-            print(f"Ошибка при скачивании TikTok: {e}")
+        except Exception:
+            logger.exception("Ошибка при скачивании TikTok")
             return None

@@ -1,10 +1,15 @@
-from AI_module import prompts, llm, memory
+import logging
+
+from AI_module import llm, memory, prompts
+
+logger = logging.getLogger(__name__)
 
 COMPRESS_THRESHOLD = 100
 COMPRESS_BATCH = 50
 
 
 async def maybe_compress(chat_id: int):
+    """Сжимает старые сообщения в саммари, когда история переросла порог."""
     if await memory.count_messages(chat_id) < COMPRESS_THRESHOLD:
         return
 
@@ -27,12 +32,12 @@ async def maybe_compress(chat_id: int):
             chat_id=chat_id,
             tag="summarizer",
         )
-    except Exception as e:
-        print(f"Ошибка сжатия истории: {e}")
+    except Exception:
+        logger.exception("Ошибка сжатия истории")
         return
 
     if not new_summary.strip():
-        print("Сжатие истории: пустой ответ, пропуск.")
+        logger.info("Сжатие истории: пустой ответ, пропуск.")
         return
 
     await memory.commit_compression(chat_id, [msg[0] for msg in old], new_summary.strip())
